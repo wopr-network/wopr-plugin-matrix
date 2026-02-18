@@ -1,6 +1,6 @@
+import type { WOPRPluginContext } from "@wopr-network/plugin-types";
 import type { MatrixClient } from "matrix-bot-sdk";
 import { logger } from "./logger.js";
-import type { WOPRPluginContext } from "@wopr-network/plugin-types";
 
 export interface MatrixStatusInfo {
   online: boolean;

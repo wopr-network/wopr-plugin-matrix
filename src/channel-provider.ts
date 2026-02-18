@@ -1,6 +1,3 @@
-import type { MatrixClient } from "matrix-bot-sdk";
-import { logger } from "./logger.js";
-import { chunkMessage, formatMessage } from "./message-formatter.js";
 import type {
   ChannelCommand,
   ChannelCommandContext,
@@ -8,6 +5,9 @@ import type {
   ChannelMessageParser,
   ChannelProvider,
 } from "@wopr-network/plugin-types";
+import type { MatrixClient } from "matrix-bot-sdk";
+import { logger } from "./logger.js";
+import { chunkMessage, formatMessage } from "./message-formatter.js";
 
 let matrixClient: MatrixClient | null = null;
 

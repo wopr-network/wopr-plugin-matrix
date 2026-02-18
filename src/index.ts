@@ -1,5 +1,5 @@
-import type { MatrixClient } from "matrix-bot-sdk";
 import type { ConfigSchema, WOPRPlugin, WOPRPluginContext } from "@wopr-network/plugin-types";
+import type { MatrixClient } from "matrix-bot-sdk";
 import { matrixChannelProvider, setCachedBotUsername, setChannelProviderClient } from "./channel-provider.js";
 import { RoomQueueManager } from "./channel-queue.js";
 import { executeInjectInternal, handleRoomMessage, subscribeSessionEvents } from "./event-handlers.js";

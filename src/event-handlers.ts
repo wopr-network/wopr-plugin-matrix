@@ -1,3 +1,4 @@
+import type { SessionResponseEvent, StreamMessage, WOPRPluginContext } from "@wopr-network/plugin-types";
 import type { MatrixClient } from "matrix-bot-sdk";
 import { saveAttachments } from "./attachments.js";
 import { handleRegisteredCommand, handleRegisteredParsers } from "./channel-provider.js";
@@ -5,7 +6,6 @@ import type { QueuedInject, RoomQueueManager } from "./channel-queue.js";
 import { logger } from "./logger.js";
 import { getSessionKey, getUserDisplayName } from "./matrix-utils.js";
 import { chunkMessage, formatMessage } from "./message-formatter.js";
-import type { SessionResponseEvent, StreamMessage, WOPRPluginContext } from "@wopr-network/plugin-types";
 
 interface MatrixRoomEvent {
   type: string;

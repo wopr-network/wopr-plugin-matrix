@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MatrixClient } from "matrix-bot-sdk";
 import { logger } from "./logger.js";
+
 interface MatrixRoomEvent {
   type: string;
   sender: string;

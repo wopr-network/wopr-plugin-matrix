@@ -27,24 +27,28 @@ export class RoomQueueManager {
   constructor(private executeInject: (item: QueuedInject, cancelToken: { cancelled: boolean }) => Promise<void>) {}
 
   private getRoomQueue(roomId: string): RoomQueue {
-    if (!this.roomQueues.has(roomId)) {
-      this.roomQueues.set(roomId, {
+    let queue = this.roomQueues.get(roomId);
+    if (!queue) {
+      queue = {
         processingChain: Promise.resolve(),
         currentInject: null,
         generation: 0,
-      });
+      };
+      this.roomQueues.set(roomId, queue);
     }
-    return this.roomQueues.get(roomId)!;
+    return queue;
   }
 
   getSessionState(sessionKey: string): SessionState {
-    if (!this.sessionStates.has(sessionKey)) {
-      this.sessionStates.set(sessionKey, {
+    let state = this.sessionStates.get(sessionKey);
+    if (!state) {
+      state = {
         thinkingLevel: "medium",
         messageCount: 0,
-      });
+      };
+      this.sessionStates.set(sessionKey, state);
     }
-    return this.sessionStates.get(sessionKey)!;
+    return state;
   }
 
   queueInject(roomId: string, item: QueuedInject): void {
