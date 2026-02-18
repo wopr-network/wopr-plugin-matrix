@@ -3,7 +3,22 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MatrixClient } from "matrix-bot-sdk";
 import { logger } from "./logger.js";
-import type { MatrixRoomEvent } from "./types.js";
+interface MatrixRoomEvent {
+  type: string;
+  sender: string;
+  event_id: string;
+  room_id: string;
+  origin_server_ts: number;
+  content: {
+    msgtype?: string;
+    body?: string;
+    formatted_body?: string;
+    format?: string;
+    url?: string;
+    info?: { mimetype?: string; size?: number; w?: number; h?: number };
+    "m.relates_to"?: { "m.in_reply_to"?: { event_id: string } };
+  };
+}
 
 function getAttachmentsDir(): string {
   if (process.env.WOPR_ATTACHMENTS_DIR) return process.env.WOPR_ATTACHMENTS_DIR;

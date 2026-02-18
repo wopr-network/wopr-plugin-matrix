@@ -1,4 +1,5 @@
 import type { MatrixClient } from "matrix-bot-sdk";
+import type { ConfigSchema, WOPRPlugin, WOPRPluginContext } from "@wopr-network/plugin-types";
 import { matrixChannelProvider, setCachedBotUsername, setChannelProviderClient } from "./channel-provider.js";
 import { RoomQueueManager } from "./channel-queue.js";
 import { executeInjectInternal, handleRoomMessage, subscribeSessionEvents } from "./event-handlers.js";
@@ -6,7 +7,23 @@ import { logger } from "./logger.js";
 import { createMatrixClient } from "./matrix-client.js";
 import { createMatrixExtension } from "./matrix-extension.js";
 import { getUserDisplayName } from "./matrix-utils.js";
-import type { ConfigSchema, MatrixRoomEvent, WOPRPlugin, WOPRPluginContext } from "./types.js";
+
+interface MatrixRoomEvent {
+  type: string;
+  sender: string;
+  event_id: string;
+  room_id: string;
+  origin_server_ts: number;
+  content: {
+    msgtype?: string;
+    body?: string;
+    formatted_body?: string;
+    format?: string;
+    url?: string;
+    info?: { mimetype?: string; size?: number; w?: number; h?: number };
+    "m.relates_to"?: { "m.in_reply_to"?: { event_id: string } };
+  };
+}
 
 let client: MatrixClient | null = null;
 let ctx: WOPRPluginContext | null = null;
@@ -75,6 +92,16 @@ const plugin: WOPRPlugin = {
     license: "MIT",
     repository: "https://github.com/wopr-network/wopr-plugin-matrix",
     capabilities: ["channel", "messaging", "e2ee"],
+    provides: {
+      capabilities: [
+        {
+          type: "channel",
+          id: "matrix",
+          displayName: "Matrix",
+          tier: "byok",
+        },
+      ],
+    },
     requires: {
       network: { outbound: true },
       storage: { persistent: true, estimatedSize: "50MB" },

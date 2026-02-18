@@ -7,7 +7,7 @@ import type {
   ChannelMessageContext,
   ChannelMessageParser,
   ChannelProvider,
-} from "./types.js";
+} from "@wopr-network/plugin-types";
 
 let matrixClient: MatrixClient | null = null;
 

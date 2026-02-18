@@ -5,7 +5,24 @@ import type { QueuedInject, RoomQueueManager } from "./channel-queue.js";
 import { logger } from "./logger.js";
 import { getSessionKey, getUserDisplayName } from "./matrix-utils.js";
 import { chunkMessage, formatMessage } from "./message-formatter.js";
-import type { MatrixRoomEvent, SessionResponseEvent, StreamMessage, WOPRPluginContext } from "./types.js";
+import type { SessionResponseEvent, StreamMessage, WOPRPluginContext } from "@wopr-network/plugin-types";
+
+interface MatrixRoomEvent {
+  type: string;
+  sender: string;
+  event_id: string;
+  room_id: string;
+  origin_server_ts: number;
+  content: {
+    msgtype?: string;
+    body?: string;
+    formatted_body?: string;
+    format?: string;
+    url?: string;
+    info?: { mimetype?: string; size?: number; w?: number; h?: number };
+    "m.relates_to"?: { "m.in_reply_to"?: { event_id: string } };
+  };
+}
 
 /**
  * Execute an inject (called by the queue manager).
