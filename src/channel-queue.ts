@@ -17,6 +17,7 @@ export interface SessionState {
 interface RoomQueue {
   processingChain: Promise<void>;
   currentInject: { cancelled: boolean } | null;
+  generation: number;
 }
 
 export class RoomQueueManager {
@@ -30,6 +31,7 @@ export class RoomQueueManager {
       this.roomQueues.set(roomId, {
         processingChain: Promise.resolve(),
         currentInject: null,
+        generation: 0,
       });
     }
     return this.roomQueues.get(roomId)!;
@@ -47,18 +49,26 @@ export class RoomQueueManager {
 
   queueInject(roomId: string, item: QueuedInject): void {
     const queue = this.getRoomQueue(roomId);
+    const capturedGeneration = queue.generation;
 
     queue.processingChain = queue.processingChain.then(async () => {
+      // If the generation has advanced since this closure was enqueued, it means
+      // cancelRoomQueue was called — skip execution entirely.
+      const currentQueue = this.roomQueues.get(roomId);
+      if (!currentQueue || currentQueue.generation !== capturedGeneration) {
+        return;
+      }
+
       const cancelToken = { cancelled: false };
-      queue.currentInject = cancelToken;
+      currentQueue.currentInject = cancelToken;
 
       try {
         await this.executeInject(item, cancelToken);
       } catch (error) {
         logger.error({ msg: "Queue inject failed", roomId, error: String(error) });
       } finally {
-        if (queue.currentInject === cancelToken) {
-          queue.currentInject = null;
+        if (currentQueue.currentInject === cancelToken) {
+          currentQueue.currentInject = null;
         }
       }
     });
@@ -70,15 +80,15 @@ export class RoomQueueManager {
     const queue = this.roomQueues.get(roomId);
     if (!queue) return false;
 
-    // Cancel both the in-flight inject and reset the chain so queued-but-waiting
-    // injects do not execute after cancellation.
+    // Cancel both the in-flight inject and invalidate any already-chained closures
+    // by incrementing the generation counter. Closures that already hold a reference
+    // to the old processingChain will check the generation before executing and bail.
     let hadSomething = false;
     if (queue.currentInject) {
       queue.currentInject.cancelled = true;
       hadSomething = true;
     }
-    // Replace the chain with a resolved promise so queued continuations are dropped.
-    queue.processingChain = Promise.resolve();
+    queue.generation += 1;
     this.roomQueues.delete(roomId);
     return hadSomething;
   }
