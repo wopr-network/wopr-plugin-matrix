@@ -28,6 +28,7 @@ interface MatrixRoomEvent {
 let client: MatrixClient | null = null;
 let ctx: WOPRPluginContext | null = null;
 let queueManager: RoomQueueManager | null = null;
+let sessionUnsubscribe: (() => void) | undefined;
 
 const configSchema: ConfigSchema = {
   title: "Matrix Integration",
@@ -179,7 +180,7 @@ const plugin: WOPRPlugin = {
       logger.info("Registered Matrix extension");
     }
 
-    subscribeSessionEvents(ctx, client);
+    sessionUnsubscribe = subscribeSessionEvents(ctx, client);
 
     client.on("room.message", (roomId: string, event: unknown) => {
       if (!client || !ctx || !queueManager) return;
@@ -202,8 +203,9 @@ const plugin: WOPRPlugin = {
 
     if (!config.accessToken && client.accessToken) {
       try {
+        const { password: _omit, ...rest } = config;
         await ctx.saveConfig({
-          ...config,
+          ...rest,
           accessToken: client.accessToken,
         });
         logger.info("Saved access token from password login to config");
@@ -214,6 +216,10 @@ const plugin: WOPRPlugin = {
   },
 
   async shutdown() {
+    if (sessionUnsubscribe) {
+      sessionUnsubscribe();
+      sessionUnsubscribe = undefined;
+    }
     if (ctx?.unregisterChannelProvider) {
       ctx.unregisterChannelProvider("matrix");
     }

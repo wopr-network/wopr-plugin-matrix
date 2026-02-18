@@ -78,7 +78,7 @@ export async function executeInjectInternal(
 
     await client.setTyping(roomId, false).catch(() => {});
 
-    if (fullResponse.trim()) {
+    if (!cancelToken.cancelled && fullResponse.trim()) {
       const chunks = chunkMessage(fullResponse);
       for (const chunk of chunks) {
         const msgContent = formatMessage(chunk);
@@ -191,11 +191,12 @@ export async function handleRoomMessage(
 
 /**
  * Subscribe to session events for cross-channel inject delivery.
+ * Returns an unsubscribe function to be called on shutdown.
  */
-export function subscribeSessionEvents(ctx: WOPRPluginContext, _client: MatrixClient): void {
-  if (!ctx.events) return;
+export function subscribeSessionEvents(ctx: WOPRPluginContext, _client: MatrixClient): (() => void) | undefined {
+  if (!ctx.events) return undefined;
 
-  ctx.events.on("session:afterInject", async (payload: SessionResponseEvent) => {
+  const unsubscribe = ctx.events.on("session:afterInject", async (payload: SessionResponseEvent) => {
     if (!payload.session.startsWith("matrix:")) return;
     if ((payload as unknown as { channel?: { type: string } }).channel?.type === "matrix") return;
 
@@ -210,4 +211,5 @@ export function subscribeSessionEvents(ctx: WOPRPluginContext, _client: MatrixCl
   });
 
   logger.info("Subscribed to session events for Matrix delivery");
+  return unsubscribe;
 }
