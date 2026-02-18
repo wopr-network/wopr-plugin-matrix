@@ -38,12 +38,20 @@ function containsFormatting(text: string): boolean {
  * Convert basic markdown to HTML for Matrix formatted_body.
  */
 export function markdownToHtml(text: string): string {
-  let html = text;
-
-  // Code blocks (must be first to avoid inner formatting)
-  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, lang, code) => {
+  // Extract code blocks before any other transforms so the newline→<br/> step
+  // does not corrupt multi-line code output with double line breaks.
+  const codeBlocks: string[] = [];
+  // Placeholder must not contain markdown special chars (_*~`[#-) to avoid
+  // being transformed by subsequent formatting rules before reinsertion.
+  const PLACEHOLDER_PREFIX = "WOPRCBSTART";
+  const PLACEHOLDER_SUFFIX = "WOPRCBEND";
+  let html = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, lang, code) => {
     const escapedCode = escapeHtml(code.trim());
-    return lang ? `<pre><code class="language-${lang}">${escapedCode}</code></pre>` : `<pre><code>${escapedCode}</code></pre>`;
+    const block = lang
+      ? `<pre><code class="language-${lang}">${escapedCode}</code></pre>`
+      : `<pre><code>${escapedCode}</code></pre>`;
+    const idx = codeBlocks.push(block) - 1;
+    return `${PLACEHOLDER_PREFIX}${idx}${PLACEHOLDER_SUFFIX}`;
   });
 
   // Inline code
@@ -71,8 +79,14 @@ export function markdownToHtml(text: string): string {
   html = html.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
   html = html.replace(/^#\s+(.+)$/gm, "<h1>$1</h1>");
 
-  // Line breaks
+  // Line breaks — applied only outside code blocks (which are already placeholders)
   html = html.replace(/\n/g, "<br/>");
+
+  // Reinsert extracted code blocks
+  html = html.replace(
+    new RegExp(`${PLACEHOLDER_PREFIX}(\\d+)${PLACEHOLDER_SUFFIX}`, "g"),
+    (_m, idx) => codeBlocks[Number(idx)] ?? "",
+  );
 
   return html;
 }

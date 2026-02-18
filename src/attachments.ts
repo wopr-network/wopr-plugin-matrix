@@ -1,5 +1,5 @@
-import { createWriteStream, existsSync, mkdirSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { existsSync, mkdirSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MatrixClient } from "matrix-bot-sdk";
 import { logger } from "./logger.js";
@@ -42,17 +42,7 @@ export async function saveAttachments(client: MatrixClient, event: MatrixRoomEve
     const data = await client.downloadContent(mxcUrl);
     const buffer = Buffer.isBuffer(data.data) ? data.data : Buffer.from(data.data);
 
-    await new Promise<void>((resolve, reject) => {
-      const fileStream = createWriteStream(filepath);
-      fileStream.write(buffer, (err) => {
-        if (err) reject(err);
-        else {
-          fileStream.end();
-          fileStream.on("finish", resolve);
-          fileStream.on("error", reject);
-        }
-      });
-    });
+    await writeFile(filepath, buffer);
 
     logger.info({
       msg: "Matrix attachment saved",

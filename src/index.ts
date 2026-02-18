@@ -193,6 +193,14 @@ const plugin: WOPRPlugin = {
     if (ctx?.unregisterExtension) {
       ctx.unregisterExtension("matrix");
     }
+
+    // Drain pending queue work before nulling client/queueManager.
+    // This prevents in-flight injects from hitting a null client mid-execution.
+    if (queueManager) {
+      const drainTimeoutMs = 10_000;
+      await Promise.race([queueManager.drain(), new Promise<void>((resolve) => setTimeout(resolve, drainTimeoutMs))]);
+    }
+
     if (client) {
       client.stop();
       client = null;

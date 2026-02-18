@@ -3,8 +3,8 @@ import { saveAttachments } from "./attachments.js";
 import { handleRegisteredCommand, handleRegisteredParsers } from "./channel-provider.js";
 import type { QueuedInject, RoomQueueManager } from "./channel-queue.js";
 import { logger } from "./logger.js";
-import { chunkMessage, formatMessage } from "./message-formatter.js";
 import { getSessionKey, getUserDisplayName } from "./matrix-utils.js";
+import { chunkMessage, formatMessage } from "./message-formatter.js";
 import type { MatrixRoomEvent, SessionResponseEvent, StreamMessage, WOPRPluginContext } from "./types.js";
 
 /**
@@ -42,7 +42,10 @@ export async function executeInjectInternal(
         if (cancelToken.cancelled) return;
         if (msg.type === "text" && msg.content) {
           fullResponse += msg.content;
-        } else if ((msg.type as string) === "assistant" && (msg as unknown as { message?: { content?: unknown } }).message?.content) {
+        } else if (
+          (msg.type as string) === "assistant" &&
+          (msg as unknown as { message?: { content?: unknown } }).message?.content
+        ) {
           const content = (msg as unknown as { message: { content: unknown } }).message.content;
           if (Array.isArray(content)) {
             fullResponse += content.map((c: unknown) => (c as { text?: string }).text || "").join("");
@@ -124,8 +127,13 @@ export async function handleRoomMessage(
     });
   } catch (_e) {}
 
-  const members = await client.getJoinedRoomMembers(roomId).catch(() => []);
-  const isDM = members.length <= 2;
+  let isDM = false;
+  try {
+    const members = await client.getJoinedRoomMembers(roomId);
+    isDM = members.length <= 2;
+  } catch (_e) {
+    isDM = false;
+  }
   const botDisplayName = await getUserDisplayName(client, botUserId, roomId);
   const isMentioned = body.includes(botUserId) || body.toLowerCase().includes(botDisplayName.toLowerCase());
 

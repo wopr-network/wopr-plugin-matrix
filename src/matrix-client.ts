@@ -1,5 +1,11 @@
-import { AutojoinRoomsMixin, MatrixAuth, MatrixClient, RustSdkCryptoStorageProvider, SimpleFsStorageProvider } from "matrix-bot-sdk";
 import path from "node:path";
+import {
+  AutojoinRoomsMixin,
+  MatrixAuth,
+  MatrixClient,
+  RustSdkCryptoStorageProvider,
+  SimpleFsStorageProvider,
+} from "matrix-bot-sdk";
 import { logger } from "./logger.js";
 
 export interface MatrixClientConfig {
@@ -21,7 +27,10 @@ export interface MatrixClientConfig {
  * 2. If userId + password are provided, perform password login to get an access token
  */
 export async function createMatrixClient(config: MatrixClientConfig): Promise<MatrixClient> {
-  const storageDir = config.storageDir || "/tmp/wopr-matrix";
+  if (!config.storageDir) {
+    throw new Error("Matrix plugin requires storageDir to be set — E2EE keys must not be stored in /tmp");
+  }
+  const storageDir = config.storageDir;
 
   let accessToken = config.accessToken;
 
