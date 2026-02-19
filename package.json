@@ -16,7 +16,14 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["wopr", "plugin", "matrix", "bot", "ai", "e2ee"],
+  "keywords": [
+    "wopr",
+    "plugin",
+    "matrix",
+    "bot",
+    "ai",
+    "e2ee"
+  ],
   "author": "WOPR",
   "license": "MIT",
   "dependencies": {
@@ -30,10 +37,14 @@
     "@types/node": "^25.2.3",
     "@vitest/coverage-istanbul": "^4.0.18",
     "typescript": "^5.3.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "semantic-release": "^24.0.0",
+    "@wopr-network/semantic-release-config": "^1.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }
