@@ -68,7 +68,7 @@ export class RoomQueueManager {
 
       try {
         await this.executeInject(item, cancelToken);
-      } catch (error) {
+      } catch (error: unknown) {
         logger.error({ msg: "Queue inject failed", roomId, error: String(error) });
       } finally {
         if (currentQueue.currentInject === cancelToken) {
