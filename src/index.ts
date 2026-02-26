@@ -41,6 +41,7 @@ const configSchema: ConfigSchema = {
       placeholder: "https://matrix.example.org",
       required: true,
       description: "Your Matrix homeserver URL (e.g., https://matrix.org)",
+      setupFlow: "paste",
     },
     {
       name: "accessToken",
@@ -48,6 +49,8 @@ const configSchema: ConfigSchema = {
       label: "Access Token",
       placeholder: "syt_...",
       description: "Bot access token (preferred over password login)",
+      secret: true,
+      setupFlow: "paste",
     },
     {
       name: "userId",
@@ -55,6 +58,7 @@ const configSchema: ConfigSchema = {
       label: "Bot User ID",
       placeholder: "@bot:example.org",
       description: "Full Matrix user ID for the bot (e.g., @wopr:matrix.org)",
+      setupFlow: "paste",
     },
     {
       name: "password",
@@ -62,6 +66,8 @@ const configSchema: ConfigSchema = {
       label: "Password (alternative to token)",
       placeholder: "Bot account password",
       description: "Used for initial login if no access token is provided",
+      secret: true,
+      setupFlow: "paste",
     },
     {
       name: "enableEncryption",
@@ -69,6 +75,7 @@ const configSchema: ConfigSchema = {
       label: "Enable E2EE",
       default: true,
       description: "Enable end-to-end encryption for encrypted rooms",
+      setupFlow: "none",
     },
     {
       name: "autoJoinRooms",
@@ -76,6 +83,7 @@ const configSchema: ConfigSchema = {
       label: "Auto-join Rooms",
       default: true,
       description: "Automatically join rooms when invited",
+      setupFlow: "none",
     },
   ],
 };
@@ -114,6 +122,7 @@ const plugin: WOPRPlugin = {
       shutdownBehavior: "drain",
       shutdownTimeoutMs: 10_000,
     },
+    configSchema,
   },
 
   async init(context: WOPRPluginContext) {
@@ -155,9 +164,9 @@ const plugin: WOPRPlugin = {
         autoJoinRooms: config.autoJoinRooms,
         storageDir: pluginDir,
       });
-    } catch (err) {
-      logger.error({ msg: "Failed to create Matrix client", error: String(err) });
-      throw err;
+    } catch (error: unknown) {
+      logger.error({ msg: "Failed to create Matrix client", error: String(error) });
+      throw error;
     }
 
     const botUserId = await client.getUserId();
@@ -184,8 +193,8 @@ const plugin: WOPRPlugin = {
 
     client.on("room.message", (roomId: string, event: unknown) => {
       if (!client || !ctx || !queueManager) return;
-      handleRoomMessage(roomId, event as MatrixRoomEvent, client, ctx, queueManager).catch((e) =>
-        logger.error({ msg: "Room message handling failed", error: String(e) }),
+      handleRoomMessage(roomId, event as MatrixRoomEvent, client, ctx, queueManager).catch((error: unknown) =>
+        logger.error({ msg: "Room message handling failed", error: String(error) }),
       );
     });
 
@@ -196,9 +205,9 @@ const plugin: WOPRPlugin = {
     try {
       await client.start();
       logger.info({ msg: "Matrix bot started", userId: botUserId, displayName: botDisplayName });
-    } catch (e) {
-      logger.error({ msg: "Matrix client start failed", error: String(e) });
-      throw e;
+    } catch (error: unknown) {
+      logger.error({ msg: "Matrix client start failed", error: String(error) });
+      throw error;
     }
 
     if (!config.accessToken && client.accessToken) {
@@ -209,8 +218,8 @@ const plugin: WOPRPlugin = {
           accessToken: client.accessToken,
         });
         logger.info("Saved access token from password login to config");
-      } catch (err) {
-        logger.warn({ msg: "Failed to save access token to config", error: String(err) });
+      } catch (error: unknown) {
+        logger.warn({ msg: "Failed to save access token to config", error: String(error) });
       }
     }
   },
@@ -219,6 +228,9 @@ const plugin: WOPRPlugin = {
     if (sessionUnsubscribe) {
       sessionUnsubscribe();
       sessionUnsubscribe = undefined;
+    }
+    if (ctx?.unregisterConfigSchema) {
+      ctx.unregisterConfigSchema("@wopr-network/wopr-plugin-matrix");
     }
     if (ctx?.unregisterChannelProvider) {
       ctx.unregisterChannelProvider("matrix");
@@ -240,6 +252,7 @@ const plugin: WOPRPlugin = {
     }
     setChannelProviderClient(null);
     queueManager = null;
+    ctx = null;
     logger.info("Matrix plugin shut down");
   },
 };

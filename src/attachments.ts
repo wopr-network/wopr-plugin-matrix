@@ -68,8 +68,8 @@ export async function saveAttachments(client: MatrixClient, event: MatrixRoomEve
     });
 
     return [filepath];
-  } catch (err) {
-    logger.error({ msg: "Error saving Matrix attachment", mxcUrl, error: String(err) });
+  } catch (error: unknown) {
+    logger.error({ msg: "Error saving Matrix attachment", mxcUrl, error: String(error) });
     return [];
   }
 }

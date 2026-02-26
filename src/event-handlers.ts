@@ -142,13 +142,13 @@ export async function handleRoomMessage(
       from: authorDisplayName,
       channel: { type: "matrix", id: roomId, name: roomId },
     });
-  } catch (_e) {}
+  } catch (_error: unknown) {}
 
   let isDM = false;
   try {
     const members = await client.getJoinedRoomMembers(roomId);
     isDM = members.length <= 2;
-  } catch (_e) {
+  } catch (_error: unknown) {
     isDM = false;
   }
   const botDisplayName = await getUserDisplayName(client, botUserId, roomId);
