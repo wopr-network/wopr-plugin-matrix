@@ -67,22 +67,26 @@ export async function handleReactionEvent(event: MatrixReactionEvent, botUserId:
   const pending = pendingNotifications.get(targetEventId);
   if (!pending) return;
 
-  if (emoji !== ACCEPT_EMOJI && emoji !== DENY_EMOJI) return;
+  if (pending.roomId && event.room_id !== pending.roomId) return;
+
+  const normalizedKey = emoji.replace(/\uFE0F/g, "");
+
+  if (normalizedKey !== ACCEPT_EMOJI && normalizedKey !== DENY_EMOJI) return;
 
   // Remove immediately to prevent double-firing
   pendingNotifications.delete(targetEventId);
 
   try {
-    if (emoji === ACCEPT_EMOJI && pending.callbacks.onAccept) {
+    if (normalizedKey === ACCEPT_EMOJI && pending.callbacks.onAccept) {
       await pending.callbacks.onAccept();
-    } else if (emoji === DENY_EMOJI && pending.callbacks.onDeny) {
+    } else if (normalizedKey === DENY_EMOJI && pending.callbacks.onDeny) {
       await pending.callbacks.onDeny();
     }
   } catch (error) {
     logger.error({
       msg: "Notification callback failed",
       eventId: targetEventId,
-      action: emoji === ACCEPT_EMOJI ? "accept" : "deny",
+      action: normalizedKey === ACCEPT_EMOJI ? "accept" : "deny",
       error: String(error),
     });
   }

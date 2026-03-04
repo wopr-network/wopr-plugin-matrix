@@ -7,7 +7,7 @@ import type {
 } from "@wopr-network/plugin-types";
 import type { MatrixClient } from "matrix-bot-sdk";
 import { logger } from "./logger.js";
-import { chunkMessage, formatMessage } from "./message-formatter.js";
+import { chunkMessage, escapeHtml, formatMessage } from "./message-formatter.js";
 import { ACCEPT_EMOJI, DENY_EMOJI, storePendingNotification } from "./notification-reactions.js";
 
 export interface ChannelNotificationPayload {
@@ -112,9 +112,12 @@ export const matrixChannelProvider: ChannelProvider & {
       `Pubkey: ${pubkeyShort}\n\n` +
       `React ${ACCEPT_EMOJI} to accept or ${DENY_EMOJI} to deny.`;
 
+    const safeFrom = escapeHtml(payload.from ?? "unknown");
+    const safePubkey = escapeHtml(pubkeyShort);
+
     const htmlBody =
-      `<b>Friend Request from ${from}</b><br/>` +
-      `Pubkey: <code>${pubkeyShort}</code><br/><br/>` +
+      `<b>Friend Request from ${safeFrom}</b><br/>` +
+      `Pubkey: <code>${safePubkey}</code><br/><br/>` +
       `React ${ACCEPT_EMOJI} to accept or ${DENY_EMOJI} to deny.`;
 
     try {
