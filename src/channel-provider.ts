@@ -8,6 +8,19 @@ import type {
 import type { MatrixClient } from "matrix-bot-sdk";
 import { logger } from "./logger.js";
 import { chunkMessage, formatMessage } from "./message-formatter.js";
+import { ACCEPT_EMOJI, DENY_EMOJI, storePendingNotification } from "./notification-reactions.js";
+
+export interface ChannelNotificationPayload {
+  type: string;
+  from?: string;
+  pubkey?: string;
+  [key: string]: unknown;
+}
+
+export interface ChannelNotificationCallbacks {
+  onAccept?: () => Promise<void>;
+  onDeny?: () => Promise<void>;
+}
 
 let matrixClient: MatrixClient | null = null;
 
@@ -29,7 +42,13 @@ export function setCachedBotUsername(username: string): void {
   cachedBotUsername = username;
 }
 
-export const matrixChannelProvider: ChannelProvider = {
+export const matrixChannelProvider: ChannelProvider & {
+  sendNotification?: (
+    channelId: string,
+    payload: ChannelNotificationPayload,
+    callbacks?: ChannelNotificationCallbacks,
+  ) => Promise<void>;
+} = {
   id: "matrix",
 
   registerCommand(cmd: ChannelCommand): void {
@@ -71,6 +90,52 @@ export const matrixChannelProvider: ChannelProvider = {
 
   getBotUsername(): string {
     return cachedBotUsername;
+  },
+
+  async sendNotification(
+    channelId: string,
+    payload: ChannelNotificationPayload,
+    callbacks?: ChannelNotificationCallbacks,
+  ): Promise<void> {
+    if (payload.type !== "p2p:friendRequest:pending") return;
+
+    if (!matrixClient) {
+      logger.warn("sendNotification called but Matrix client not initialized");
+      return;
+    }
+
+    const from = payload.from ?? "unknown";
+    const pubkeyShort = payload.pubkey ? `${payload.pubkey.slice(0, 8)}...` : "n/a";
+
+    const body =
+      `Friend Request from ${from}\n` +
+      `Pubkey: ${pubkeyShort}\n\n` +
+      `React ${ACCEPT_EMOJI} to accept or ${DENY_EMOJI} to deny.`;
+
+    const htmlBody =
+      `<b>Friend Request from ${from}</b><br/>` +
+      `Pubkey: <code>${pubkeyShort}</code><br/><br/>` +
+      `React ${ACCEPT_EMOJI} to accept or ${DENY_EMOJI} to deny.`;
+
+    try {
+      const eventId = await matrixClient.sendMessage(channelId, {
+        msgtype: "m.text",
+        body,
+        format: "org.matrix.custom.html",
+        formatted_body: htmlBody,
+      });
+
+      if (callbacks && (callbacks.onAccept || callbacks.onDeny)) {
+        storePendingNotification(eventId, channelId, {
+          onAccept: callbacks.onAccept,
+          onDeny: callbacks.onDeny,
+        });
+      }
+
+      logger.info({ msg: "Friend request notification sent", from, roomId: channelId, eventId });
+    } catch (error) {
+      logger.error({ msg: "Failed to send notification", error: String(error) });
+    }
   },
 };
 
