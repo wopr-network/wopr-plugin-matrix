@@ -134,7 +134,7 @@ export const matrixChannelProvider: ChannelProvider & {
 
       logger.info({ msg: "Friend request notification sent", from, roomId: channelId, eventId });
     } catch (error) {
-      logger.error({ msg: "Failed to send notification", error: String(error) });
+      logger.error({ msg: "Failed to send notification", from, roomId: channelId, error: String(error) });
     }
   },
 };

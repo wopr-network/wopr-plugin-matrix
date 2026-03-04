@@ -8,6 +8,7 @@ import { createMatrixClient } from "./matrix-client.js";
 import { createMatrixExtension } from "./matrix-extension.js";
 import { getUserDisplayName } from "./matrix-utils.js";
 import {
+  cleanupExpiredNotifications,
   clearAllPendingNotifications,
   handleReactionEvent,
   type MatrixReactionEvent,
@@ -34,6 +35,7 @@ let client: MatrixClient | null = null;
 let ctx: WOPRPluginContext | null = null;
 let queueManager: RoomQueueManager | null = null;
 let sessionUnsubscribe: (() => void) | undefined;
+let cleanupInterval: ReturnType<typeof setInterval> | undefined;
 
 const configSchema: ConfigSchema = {
   title: "Matrix Integration",
@@ -225,6 +227,8 @@ const plugin: WOPRPlugin = {
       throw error;
     }
 
+    cleanupInterval = setInterval(cleanupExpiredNotifications, 60_000);
+
     if (!config.accessToken && client.accessToken) {
       try {
         const { password: _omit, ...rest } = config;
@@ -240,6 +244,10 @@ const plugin: WOPRPlugin = {
   },
 
   async shutdown() {
+    if (cleanupInterval !== undefined) {
+      clearInterval(cleanupInterval);
+      cleanupInterval = undefined;
+    }
     clearAllPendingNotifications();
     if (sessionUnsubscribe) {
       sessionUnsubscribe();
