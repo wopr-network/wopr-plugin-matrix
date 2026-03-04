@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChannelNotificationCallbacks, ChannelNotificationPayload } from "../../src/channel-provider.js";
 import {
   getRegisteredCommand,
   handleRegisteredCommand,
@@ -7,6 +8,7 @@ import {
   setCachedBotUsername,
   setChannelProviderClient,
 } from "../../src/channel-provider.js";
+import { ACCEPT_EMOJI, DENY_EMOJI, clearAllPendingNotifications, getPendingNotification } from "../../src/notification-reactions.js";
 import { createMockMatrixClient } from "../mocks/matrix-client.js";
 
 describe("matrixChannelProvider", () => {
@@ -111,6 +113,70 @@ describe("handleRegisteredCommand", () => {
     const handled = await handleRegisteredCommand("!room:example.org", "@user:example.org", "!broken", replyFn);
     expect(handled).toBe(true);
     expect(replyFn).toHaveBeenCalledWith(expect.stringContaining("Error"));
+  });
+});
+
+describe("sendNotification", () => {
+  beforeEach(() => {
+    clearAllPendingNotifications();
+  });
+
+  afterEach(() => {
+    setChannelProviderClient(null);
+    clearAllPendingNotifications();
+  });
+
+  it("sends a formatted message and stores pending notification for friend requests", async () => {
+    const mockClient = createMockMatrixClient();
+    setChannelProviderClient(mockClient as unknown as import("matrix-bot-sdk").MatrixClient);
+
+    const payload: ChannelNotificationPayload = {
+      type: "p2p:friendRequest:pending",
+      from: "alice",
+      pubkey: "abcd1234",
+    };
+    const callbacks: ChannelNotificationCallbacks = {
+      onAccept: vi.fn().mockResolvedValue(undefined),
+      onDeny: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await matrixChannelProvider.sendNotification!("!room:example.org", payload, callbacks);
+
+    expect(mockClient.sendMessage).toHaveBeenCalledTimes(1);
+    const sentContent = mockClient.sendMessage.mock.calls[0][1];
+    expect(sentContent.body).toContain("alice");
+    expect(sentContent.body).toContain(ACCEPT_EMOJI);
+    expect(sentContent.body).toContain(DENY_EMOJI);
+
+    // Verify pending notification was stored with the returned event ID
+    const pending = getPendingNotification("$event123");
+    expect(pending).toBeDefined();
+    expect(pending!.roomId).toBe("!room:example.org");
+  });
+
+  it("is a no-op for non friend-request types", async () => {
+    const mockClient = createMockMatrixClient();
+    setChannelProviderClient(mockClient as unknown as import("matrix-bot-sdk").MatrixClient);
+
+    const payload: ChannelNotificationPayload = {
+      type: "some:other:type",
+    };
+
+    await matrixChannelProvider.sendNotification!("!room:example.org", payload);
+
+    expect(mockClient.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when client is null", async () => {
+    setChannelProviderClient(null);
+
+    const payload: ChannelNotificationPayload = {
+      type: "p2p:friendRequest:pending",
+      from: "alice",
+    };
+
+    // Should not throw
+    await matrixChannelProvider.sendNotification!("!room:example.org", payload);
   });
 });
 

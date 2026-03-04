@@ -7,6 +7,12 @@ import { logger } from "./logger.js";
 import { createMatrixClient } from "./matrix-client.js";
 import { createMatrixExtension } from "./matrix-extension.js";
 import { getUserDisplayName } from "./matrix-utils.js";
+import {
+  cleanupExpiredNotifications,
+  clearAllPendingNotifications,
+  handleReactionEvent,
+  type MatrixReactionEvent,
+} from "./notification-reactions.js";
 
 interface MatrixRoomEvent {
   type: string;
@@ -29,6 +35,7 @@ let client: MatrixClient | null = null;
 let ctx: WOPRPluginContext | null = null;
 let queueManager: RoomQueueManager | null = null;
 let sessionUnsubscribe: (() => void) | undefined;
+let cleanupInterval: ReturnType<typeof setInterval> | undefined;
 
 const configSchema: ConfigSchema = {
   title: "Matrix Integration",
@@ -198,6 +205,16 @@ const plugin: WOPRPlugin = {
       );
     });
 
+    client.on("room.event", async (_roomId: string, event: unknown) => {
+      if (!client) return;
+      const evt = event as { type?: string; sender?: string; room_id?: string; content?: unknown };
+      if (evt.type !== "m.reaction") return;
+      const botUserId = await client.getUserId();
+      handleReactionEvent(evt as MatrixReactionEvent, botUserId).catch((error: unknown) =>
+        logger.error({ msg: "Reaction handling failed", error: String(error) }),
+      );
+    });
+
     client.on("room.failed_decryption", (roomId: string, _event: unknown, error: Error) => {
       logger.error({ msg: "Failed to decrypt message", roomId, error: String(error) });
     });
@@ -209,6 +226,8 @@ const plugin: WOPRPlugin = {
       logger.error({ msg: "Matrix client start failed", error: String(error) });
       throw error;
     }
+
+    cleanupInterval = setInterval(cleanupExpiredNotifications, 60_000);
 
     if (!config.accessToken && client.accessToken) {
       try {
@@ -225,6 +244,11 @@ const plugin: WOPRPlugin = {
   },
 
   async shutdown() {
+    if (cleanupInterval !== undefined) {
+      clearInterval(cleanupInterval);
+      cleanupInterval = undefined;
+    }
+    clearAllPendingNotifications();
     if (sessionUnsubscribe) {
       sessionUnsubscribe();
       sessionUnsubscribe = undefined;
